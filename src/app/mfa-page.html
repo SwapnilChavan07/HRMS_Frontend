@@ -1,0 +1,162 @@
+<main class="auth-layout">
+  <section class="auth-card mfa-card" aria-labelledby="mfa-title">
+    <div class="security-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-2.9 8.1-7 10-4.1-1.9-7-5.4-7-10V6l7-3z" /><path d="m9.5 11.5 1.7 1.7 3.6-3.8" /></svg>
+    </div>
+
+    @if (isVerified()) {
+      <div class="completion-state">
+        <span class="eyebrow">SIGN-IN COMPLETE</span>
+        <h1 id="mfa-title">
+          {{ selectedMethod() === 'authenticator' ? 'Authenticator verified' : 'You’re signed in' }}
+        </h1>
+        <p class="intro-copy">{{ infoMessage() }}</p>
+        <button class="secondary-button" type="button" (click)="startOver()">Return to sign in</button>
+      </div>
+    } @else if (usernameOrEmail()) {
+      <div class="intro mfa-intro">
+        <p class="eyebrow">SECURE SIGN-IN</p>
+        <h1 id="mfa-title">Verify your identity</h1>
+        <p class="intro-copy">Google Authenticator or Email</p>
+      </div>
+
+      @if (successMessage()) {
+        <div class="notice notice-success" role="status">{{ successMessage() }}</div>
+      } @else {
+        <div class="notice notice-success" role="status">Your credentials were accepted. Choose a verification method to continue.</div>
+      }
+
+      <div class="method-options" aria-label="Choose a verification method">
+        <button
+          class="method-option"
+          [class.method-selected]="selectedMethod() === 'authenticator'"
+          type="button"
+          (click)="chooseAuthenticator()"
+          [disabled]="isEnrolling()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7.5" y="2.5" width="9" height="19" rx="2" /><path d="M11 18.5h2" /></svg>
+          <strong>{{ isEnrolling() ? 'LOADING…' : 'YES' }}</strong>
+          <span>Authenticator<br />OTP</span>
+        </button>
+        <button
+          class="method-option"
+          [class.method-selected]="selectedMethod() === 'email'"
+          type="button"
+          (click)="chooseEmail()"
+          [disabled]="isSendingEmailOtp()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg>
+          <strong>{{ isSendingEmailOtp() ? 'SENDING…' : 'NO' }}</strong>
+          <span>Registered Email<br />OTP</span>
+        </button>
+      </div>
+
+      @if (infoMessage()) {
+        <div class="notice notice-info" role="status">{{ infoMessage() }}</div>
+      }
+
+      @if (selectedMethod() === 'authenticator' && isEnrolling()) {
+        <div class="notice notice-info" role="status">Checking authenticator setup…</div>
+      }
+
+      @if (selectedMethod() === 'authenticator' && enrollmentDetails(); as setup) {
+        <div class="enrollment-panel">
+          <h2>Set up your authenticator</h2>
+          <p class="delivery-copy">{{ setup.message }}</p>
+          @if (qrCodeSource(); as qrSource) {
+            <img class="authenticator-qr" [src]="qrSource" alt="Authenticator setup QR code" />
+          }
+          <div class="manual-key">
+            <span>Can’t scan the code? Enter this key manually:</span>
+            <code>{{ setup.manualEntryKey }}</code>
+          </div>
+          <form (ngSubmit)="verifyCode()">
+            <label for="authenticatorOtp">Authenticator code</label>
+            <input
+              id="authenticatorOtp"
+              name="authenticatorOtp"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              [ngModel]="otpCode()"
+              (ngModelChange)="otpCode.set($event)"
+              placeholder="000000"
+              aria-describedby="authenticator-otp-help"
+              [disabled]="isSubmitting()"
+            />
+            <span id="authenticator-otp-help" class="input-help">Enter the 6-digit code from your authenticator app.</span>
+            <button class="primary-button verify-button" type="submit" [disabled]="isSubmitting()">
+              {{ isSubmitting() ? 'Verifying…' : 'Verify and sign in' }}
+            </button>
+          </form>
+        </div>
+      } @else if (selectedMethod() === 'authenticator' && authenticatorAlreadyEnabled()) {
+        <div class="email-code-panel">
+          <p class="delivery-copy">Enter the 6-digit code from your authenticator app.</p>
+          <form (ngSubmit)="verifyCode()">
+            <label for="authenticatorOtp">Authenticator code</label>
+            <input
+              id="authenticatorOtp"
+              name="authenticatorOtp"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              [ngModel]="otpCode()"
+              (ngModelChange)="otpCode.set($event)"
+              placeholder="000000"
+              aria-describedby="authenticator-otp-help"
+              [disabled]="isSubmitting()"
+            />
+            <span id="authenticator-otp-help" class="input-help">Use the current code shown in your authenticator app.</span>
+
+            <button class="primary-button verify-button" type="submit" [disabled]="isSubmitting()">
+              {{ isSubmitting() ? 'Verifying…' : 'Verify and sign in' }}
+            </button>
+          </form>
+        </div>
+      }
+
+      @if (selectedMethod() === 'email') {
+        <div class="email-code-panel">
+          <p class="delivery-copy">Enter the 6-digit code sent to your registered email address.</p>
+          <form (ngSubmit)="verifyCode()">
+            <label for="otpCode">Verification code</label>
+            <input
+              id="otpCode"
+              name="otpCode"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              [ngModel]="otpCode()"
+              (ngModelChange)="otpCode.set($event)"
+              placeholder="000000"
+              aria-describedby="otp-help"
+              [disabled]="!emailOtpSent() || isSubmitting()"
+            />
+            <span id="otp-help" class="input-help">
+              {{ emailOtpSent() ? 'Enter the code exactly as received.' : 'A code will be sent when you choose Registered Email OTP.' }}
+            </span>
+
+            @if (errorMessage()) {
+              <div class="notice notice-error" role="alert">{{ errorMessage() }}</div>
+            }
+
+            <button class="primary-button verify-button" type="submit" [disabled]="isSubmitting() || isSendingEmailOtp() || !emailOtpSent()">
+              {{ isSubmitting() ? 'Verifying…' : 'Verify and sign in' }}
+            </button>
+          </form>
+        </div>
+      }
+
+      @if (errorMessage() && selectedMethod() !== 'email') {
+        <div class="notice notice-error" role="alert">{{ errorMessage() }}</div>
+      }
+    }
+  </section>
+</main>

@@ -1,0 +1,72 @@
+<main class="auth-layout">
+  <section class="auth-card login-card" aria-labelledby="login-title">
+    <div class="brand" aria-label="HRMS">
+      <span class="brand-mark" aria-hidden="true">H</span>
+      <span class="brand-name">HRMS</span>
+    </div>
+
+    <div class="intro">
+      <p class="eyebrow">EMPLOYEE PORTAL</p>
+      <h1 id="login-title">Welcome back</h1>
+      <p class="intro-copy">Sign in to access your HR workspace.</p>
+    </div>
+
+    @if (errorMessage()) {
+      <div class="notice notice-error" role="alert">{{ errorMessage() }}</div>
+    }
+    @if (lockoutTimeRemaining(); as remaining) {
+      <div class="notice notice-info" role="status" aria-live="polite">
+        You can try logging in again in <strong>{{ remaining }}</strong>.
+      </div>
+    }
+
+    <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+      <label for="usernameOrEmail">Username or email</label>
+      <input
+        id="usernameOrEmail"
+        type="text"
+        formControlName="usernameOrEmail"
+        autocomplete="username"
+        placeholder="you@company.com"
+        [attr.aria-invalid]="form.controls.usernameOrEmail.invalid && form.controls.usernameOrEmail.touched"
+      />
+      @if (form.controls.usernameOrEmail.touched && form.controls.usernameOrEmail.hasError('required')) {
+        <span class="field-error">Enter your username or email.</span>
+      }
+
+      <label class="password-label" for="password">Password</label>
+      <div class="password-field">
+        <input
+          id="password"
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+          placeholder="Enter your password"
+          [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched"
+        />
+        <button
+          class="password-toggle"
+          type="button"
+          (click)="showPassword.update((visible) => !visible)"
+          [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+        >
+          @if (showPassword()) {
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.2A11.8 11.8 0 0112 5c5.2 0 9 4.2 10 7-.3 1-1.1 2.2-2.3 3.3M6.2 6.2C3.9 7.5 2.4 9.5 2 12c.6 2.2 4.2 7 10 7 1 0 2-.2 2.9-.5" /></svg>
+          } @else {
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+          }
+        </button>
+      </div>
+      @if (form.controls.password.touched && form.controls.password.hasError('required')) {
+        <span class="field-error">Enter your password.</span>
+      }
+
+      <button class="primary-button sign-in-button" type="submit" [disabled]="isSubmitting() || lockoutTimeRemaining() !== null">
+        {{ isSubmitting() ? 'Signing in…' : 'Sign in' }}
+        @if (!isSubmitting()) {
+          <span aria-hidden="true">→</span>
+        }
+      </button>
+    </form>
+  </section>
+</main>
